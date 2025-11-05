@@ -21,3 +21,7 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Data files
+.data/json
+.data/eye
