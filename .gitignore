@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 
 # Virtual environment
-.liinc_venv/
 liinc_venv/
 
 # Distribution / packaging
@@ -23,5 +22,5 @@ dist/
 Thumbs.db
 
 # Data files
-.data/json
-.data/eye
+data/json
+data/eye
