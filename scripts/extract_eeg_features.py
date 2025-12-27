@@ -90,7 +90,7 @@ def extract_eeg_features_all(eeg_df, fs=256):
 def main():
     # Load EEG data
     print("Loading EEG data...")
-    with open('data/raw/preprocessed_eeg_10_subjects.pkl', 'rb') as f:
+    with open('data/results/preprocessing/preprocessed_eeg_10_subjects.pkl', 'rb') as f:
         eeg_df = pickle.load(f)
 
     print(f"✓ Loaded {len(eeg_df)} trials")
