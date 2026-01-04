@@ -1,0 +1,35 @@
+# Data paths for LIINC analysis
+
+# Base directories
+data_dir: "data"
+results_dir: "data/results"
+notebooks_dir: "notebooks"
+
+# Preprocessing outputs
+preprocessing:
+  output_dir: "data/results/preprocessing_outputs/preprocessing"
+  eeg_data: "data/results/preprocessing_outputs/preprocessing/preprocessed_eeg_10_subjects.pkl"
+
+# Feature paths (PRE-decision)
+pre_paths:
+  features: "data/results/features_PRE/extracted_features_PRE.pkl"
+  eeg_features: "data/results/features_PRE/eeg_features_PRE.pkl"
+  model_outputs: "data/results/model_outputs_PRE"
+  fusion_results: "data/results/fusion_model_results_PRE"
+  analysis_outputs: "data/results/analysis_outputs_PRE"
+
+# Feature paths (POST-decision)
+post_paths:
+  features: "data/results/features_POST/extracted_features_POST.pkl"
+  eeg_features: "data/results/features_POST/eeg_features_POST.pkl"
+  model_outputs: "data/results/model_outputs_POST"
+  fusion_results: "data/results/fusion_model_results_POST"
+  analysis_outputs: "data/results/analysis_outputs_POST"
+
+# Session mapping
+session_mapping: "data/results/session_mapping.csv"
+
+# Raw data (not in repo)
+raw_data:
+  json_dir: "data/raw/json"
+  eeg_dir: "data/raw/eeg"
