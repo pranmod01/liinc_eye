@@ -11,3 +11,6 @@ shap
 tqdm
 jupyter
 nbconvert
+pyyaml
+xgboost
+lightgbm
