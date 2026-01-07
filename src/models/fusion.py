@@ -8,7 +8,7 @@ modalities using different fusion strategies.
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.model_selection import LeaveOneGroupOut, GroupKFold
 from sklearn.metrics import accuracy_score, f1_score
 from scipy import stats
 
@@ -102,7 +102,8 @@ def weighted_late_fusion(X_modalities, y, subjects, modality_names,
             min_samples_split=min_samples_split,
             min_samples_leaf=min_samples_leaf,
             class_weight=class_weight,
-            random_state=random_state
+            random_state=random_state,
+            n_jobs=-1  # Use all cores
         )
         for _ in X_modalities
     ]
@@ -116,22 +117,54 @@ def weighted_late_fusion(X_modalities, y, subjects, modality_names,
 
     # LOSO cross-validation
     for train_idx, test_idx in logo.split(X_modalities[0], y, subjects):
-        # Train base models and get probability predictions
-        train_probs = []
-        test_probs = []
+        # Get training and test data
+        y_train, y_test = y[train_idx], y[test_idx]
+        train_subjects = subjects[train_idx]
 
+        # For meta-learner training, we need unbiased predictions on training data
+        # Use nested 5-fold CV to get out-of-fold predictions for train_idx
+        # (using k-fold instead of LOSO for computational efficiency)
+        if fusion_method in ['weighted', 'stacking']:
+            train_probs = np.zeros((len(train_idx), len(X_modalities)))
+
+            # Nested 5-fold within training set
+            gkf_inner = GroupKFold(n_splits=5)
+            for inner_train_idx, inner_val_idx in gkf_inner.split(
+                X_modalities[0][train_idx], y_train, train_subjects
+            ):
+                # Convert to absolute indices
+                abs_inner_train = train_idx[inner_train_idx]
+                abs_inner_val = train_idx[inner_val_idx]
+
+                # Train base models on inner training set, predict on inner validation
+                # Use fewer estimators for inner loop for computational efficiency
+                for mod_i, X in enumerate(X_modalities):
+                    model = RandomForestClassifier(
+                        n_estimators=min(50, n_estimators),  # Reduce for inner loop
+                        max_depth=max_depth,
+                        min_samples_split=min_samples_split,
+                        min_samples_leaf=min_samples_leaf,
+                        class_weight=class_weight,
+                        random_state=random_state,
+                        n_jobs=-1  # Use all cores
+                    )
+                    model.fit(X[abs_inner_train], y[abs_inner_train])
+                    # Store out-of-fold predictions for this modality
+                    train_probs[inner_val_idx, mod_i] = model.predict_proba(
+                        X[abs_inner_val]
+                    )[:, 1]
+        else:
+            # For average fusion, we don't need special handling
+            train_probs = []
+
+        # Train base models on full training set and get test predictions
+        test_probs = []
         for X, model in zip(X_modalities, base_models):
             X_train, X_test = X[train_idx], X[test_idx]
-            y_train = y[train_idx]
-
             model.fit(X_train, y_train)
-            train_probs.append(model.predict_proba(X_train)[:, 1])
             test_probs.append(model.predict_proba(X_test)[:, 1])
 
-        # Stack probability predictions
-        train_probs = np.column_stack(train_probs)
         test_probs = np.column_stack(test_probs)
-        y_train, y_test = y[train_idx], y[test_idx]
 
         # Fusion strategy
         if fusion_method == 'average':
@@ -140,14 +173,14 @@ def weighted_late_fusion(X_modalities, y, subjects, modality_names,
             weights = np.ones(len(X_modalities)) / len(X_modalities)
 
         elif fusion_method == 'weighted':
-            # Logistic regression meta-learner
+            # Logistic regression meta-learner trained on unbiased predictions
             meta = LogisticRegression(random_state=random_state, max_iter=1000)
             meta.fit(train_probs, y_train)
             weights = meta.coef_[0]
             y_pred = meta.predict(test_probs)
 
         elif fusion_method == 'stacking':
-            # Random Forest meta-learner
+            # Random Forest meta-learner trained on unbiased predictions
             meta = RandomForestClassifier(
                 n_estimators=50,
                 max_depth=3,
