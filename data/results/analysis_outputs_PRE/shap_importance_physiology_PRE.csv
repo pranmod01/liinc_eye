@@ -1,0 +1,14 @@
+feature,mean_abs_shap
+pupil_slope_pre,0.03326473820941569
+pupil_std_pre,0.01710565729663982
+pct_time_dilating_pre,0.012249839995138276
+time_to_peak_pre,0.011671215846777622
+pupil_cv_pre,0.00798949966881769
+pupil_max_dilation_rate_pre,0.005081560666490981
+pupil_velocity_mean_pre,0.004041340065160685
+pupil_max_constriction_rate_pre,0.0035932164663397058
+eye_asymmetry_pre,0.003234762839402427
+pupil_mean_pre,0.003146501061971048
+eye_asymmetry_std_pre,0.003137288142292937
+pupil_acceleration_std_pre,0.002788498068519137
+num_dilation_peaks_pre,0.0024470705544139084
