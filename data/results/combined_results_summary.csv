@@ -1,0 +1,15 @@
+analysis_type,n_rows,time_periods,class_weighting,subgroups,n_files
+ambiguity_group_subject,1164,"POST, PRE","balanced, unbalanced","High, Low, Medium",12
+ambiguity_group_weights,36,"POST, PRE","balanced, unbalanced","High, Low, Medium",12
+late_fusion,12,"POST, PRE",unbalanced,none,2
+late_fusion_by_visit,6,"POST, PRE",unbalanced,none,2
+late_fusion_subject,194,"POST, PRE",unbalanced,none,2
+modality_weights,6,"POST, PRE",unbalanced,none,2
+reaction_time_group_subject,776,"POST, PRE","balanced, unbalanced","Fast, Slow",8
+reaction_time_group_weights,24,"POST, PRE","balanced, unbalanced","Fast, Slow",8
+shap_all,40,PRE,na,none,1
+shap_behavior,7,PRE,na,none,1
+shap_combined,33,PRE,na,none,1
+shap_gaze,20,PRE,na,none,1
+shap_phys_gaze,33,PRE,na,none,1
+shap_physiology,13,PRE,na,none,1

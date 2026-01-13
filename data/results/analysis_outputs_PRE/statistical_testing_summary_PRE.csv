@@ -1,0 +1,17 @@
+Test,Result,Interpretation
+Permutation Test (All Features),p = 0.0000,Significantly > chance
+,,
+Bootstrap CI - Accuracy (All Features),0.6244 (0.5631-0.6790),95% confidence interval
+,,
+Bootstrap CI - F1-Score (All Features),0.6263 (0.5565-0.6854),95% confidence interval
+,,
+McNemar: All Features vs Physiology,p = 0.0000,Significant
+McNemar: All Features vs Gaze,p = 0.0000,Significant
+McNemar: All Features vs Behavior,p = 0.3459,Not significant
+McNemar: All Features vs Physiology+Gaze,p = 0.0000,Significant
+McNemar: Physiology+Gaze vs Physiology,p = 0.9751,Not significant
+McNemar: Physiology+Gaze vs Gaze,p = 0.0145,Significant
+McNemar: Physiology+Gaze vs Behavior,p = 0.0000,Significant
+McNemar: Physiology vs Gaze,p = 0.0240,Significant
+McNemar: Physiology vs Behavior,p = 0.0000,Significant
+McNemar: Gaze vs Behavior,p = 0.0000,Significant
