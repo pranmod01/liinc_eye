@@ -15,3 +15,5 @@ McNemar: Physiology+Gaze vs Behavior,p = 0.0000,Significant
 McNemar: Physiology vs Gaze,p = 0.0240,Significant
 McNemar: Physiology vs Behavior,p = 0.0000,Significant
 McNemar: Gaze vs Behavior,p = 0.0000,Significant
+,,
+ANOVA: Ambiguity Effect on Accuracy,"F(2,288) = 23.338, p = 0.0000",Highly significant
