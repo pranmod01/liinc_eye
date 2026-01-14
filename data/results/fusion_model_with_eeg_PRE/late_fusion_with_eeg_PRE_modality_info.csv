@@ -1,0 +1,5 @@
+Modality,N_Features,Normalized,Base_Model
+Physiology,13,Yes (StandardScaler),LogisticRegression
+Behavior,7,Yes (StandardScaler),LogisticRegression
+Gaze,20,Yes (StandardScaler),LogisticRegression
+EEG,20,Yes (StandardScaler),LogisticRegression

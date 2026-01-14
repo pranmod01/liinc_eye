@@ -1,0 +1,8 @@
+Metric,Value
+Accuracy,0.6748511053627662
+Accuracy_SEM,0.014653324690394742
+F1_Score,0.6534690627161084
+F1_SEM,0.0176042082917052
+N_Subjects,97
+N_Trials,11467
+Base_Model,LogisticRegression

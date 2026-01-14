@@ -1,0 +1,4 @@
+Modality,Normalized,Base_Model
+Physiology,Yes (StandardScaler),LogisticRegression
+Behavior,Yes (StandardScaler),LogisticRegression
+Gaze,Yes (StandardScaler),LogisticRegression
