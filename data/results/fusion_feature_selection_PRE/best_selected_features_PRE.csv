@@ -1,0 +1,16 @@
+Physiology,Behavior,Gaze
+pupil_std_pre,reaction_time,gaze_x_std
+pupil_slope_pre,ev_difference,screen_x_std
+pupil_max_constriction_rate_pre,invest_variance,screen_y_mean
+pupil_acceleration_std_pre,ambiguity,screen_y_std
+pct_time_dilating_pre,risk_premium,gaze_velocity_mean
+,,gaze_velocity_std
+,,gaze_velocity_max
+,,gaze_acceleration_mean
+,,gaze_acceleration_std
+,,fixation_ratio
+,,saccade_ratio
+,,saccade_count
+,,gaze_dispersion_x
+,,gaze_dispersion_y
+,,gaze_path_length
