@@ -1,0 +1,6 @@
+Test,Statistic,p-value,Effect Size,Interpretation
+Chi-square (Ambiguity x Choice),chi2 = 1096.06,9.85e-239,Cramer's V = 0.2960,Significant
+Spearman (Ambiguity vs Outcome),rho = -0.2929,5.29e-246,rho = -0.2929,Higher ambiguity -> more Keep
+Mann-Whitney U (RT by Choice),U = 21879060,1.76e-110,r = -0.2431,Significant
+t-test (RT by Choice),t = 20.9187,1.55e-95,Cohen's d = 0.3944 (small),Keep choices take longer
+Point-biserial (RT vs Outcome),r = -0.1838,1.55e-95,r = -0.1838,Keep -> longer RT
