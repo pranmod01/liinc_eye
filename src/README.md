@@ -159,39 +159,6 @@ Contains all data paths:
 ✅ **Easy maintenance** - Change once, applies everywhere
 ✅ **Type hints & docs** - Clear API with examples
 
-## Migration Guide
-
-### Before (duplicated code):
-```python
-# In every notebook:
-model = RandomForestClassifier(n_estimators=100, max_depth=5,
-                               min_samples_split=10, min_samples_leaf=5,
-                               class_weight='balanced', random_state=42)
-
-with open('../../data/results/features_PRE/extracted_features_PRE.pkl', 'rb') as f:
-    feature_data = pickle.load(f)
-```
-
-### After (using shared utilities):
-```python
-import sys
-sys.path.append('../..')
-
-from src.utils.io import load_features
-from src.utils.config import get_model_params
-from sklearn.ensemble import RandomForestClassifier
-
-# Load features with error handling
-feature_data = load_features(
-    '../../data/results/features_PRE/extracted_features_PRE.pkl',
-    timeframe='PRE'
-)
-
-# Use consistent parameters from config
-rf_params = get_model_params('random_forest')
-model = RandomForestClassifier(**rf_params)
-```
-
 ## Testing
 
 Test that imports work:
@@ -200,17 +167,8 @@ Test that imports work:
 import sys
 sys.path.append('../..')
 
-# Test imports
 from src.models.fusion import weighted_late_fusion
 from src.utils.io import load_features
 from src.utils.config import get_model_params
 from src.utils.validation import validate_features
-
-print("✓ All imports successful!")
 ```
-
-## Future Additions
-
-Planned additions:
-- `src.preprocessing` - Feature extraction utilities
-- `src.evaluation` - Metrics and statistical tests

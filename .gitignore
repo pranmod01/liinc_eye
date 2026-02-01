@@ -24,3 +24,9 @@ Thumbs.db
 # Raw data files
 data/raw/
 data/eeg/
+
+# Large generated outputs
+data/results/preprocessing_outputs/
+data/results/features_PRE/
+data/results/features_POST/
+*.pkl
