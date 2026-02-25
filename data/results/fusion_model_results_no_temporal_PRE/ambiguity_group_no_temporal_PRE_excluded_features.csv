@@ -1,0 +1,4 @@
+excluded_feature,reason
+reaction_time,temporal/grouping variable
+decision_time,temporal/grouping variable
+ambiguity,temporal/grouping variable
