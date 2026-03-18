@@ -10,29 +10,27 @@ import pandas as pd
 from pathlib import Path
 from scipy import signal
 
-# Define frequency bands
+# Define frequency bands (Gamma excluded due to noise)
 freq_bands = {
     'Delta': (0.5, 4),
     'Theta': (4, 8),
     'Alpha': (8, 13),
     'Beta': (13, 30),
-    'Gamma': (30, 50)
 }
 
-# Channel names (10-20 system, 20 channels)
+# Channel names matching chan_locs.sfp (10-20 system, 20 channels)
+# Order matches the sfp file for electrode position mapping
 channel_names = [
-    'Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8',
-    'T3', 'C3', 'Cz', 'C4', 'T4',
-    'T5', 'P3', 'Pz', 'P4', 'T6',
-    'O1', 'Oz', 'O2'
+    'Fp1', 'F7', 'F8', 'T4', 'T6', 'T5', 'T3', 'Fp2', 'O1', 'P3',
+    'Pz', 'F3', 'Fz', 'F4', 'C4', 'P4', 'POz', 'C3', 'Cz', 'O2'
 ]
 
-# Channel regions
+# Channel regions for grouped analysis
 channel_regions = {
     'Frontal': ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8'],
     'Central': ['T3', 'C3', 'Cz', 'C4', 'T4'],
     'Parietal': ['T5', 'P3', 'Pz', 'P4', 'T6'],
-    'Occipital': ['O1', 'Oz', 'O2']
+    'Occipital': ['O1', 'POz', 'O2']
 }
 
 def compute_psd(eeg_data, fs=256):
