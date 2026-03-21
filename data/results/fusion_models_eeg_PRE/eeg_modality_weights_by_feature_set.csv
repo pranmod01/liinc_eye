@@ -1,0 +1,13 @@
+EEG Features,Modality,Weight
+Regional,Physiology,2.5435142307899508
+Regional,Behavior,95.7662304604826
+Regional,Gaze,0.5643718795140122
+Regional,EEG,1.1258834292134439
+Regional+Channels,Physiology,2.525461370268386
+Regional+Channels,Behavior,94.09542342889601
+Regional+Channels,Gaze,0.5424991558910133
+Regional+Channels,EEG,2.8366160449446
+Non-temporal,Physiology,2.547942688832417
+Non-temporal,Behavior,95.62029216676636
+Non-temporal,Gaze,0.5664077028652925
+Non-temporal,EEG,1.2653574415359254
