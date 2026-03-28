@@ -1,0 +1,15 @@
+{
+  "subject_id": "0727_1400_A6I5HI6",
+  "total_valid_trials": 0,
+  "trials_processed": [],
+  "trials_failed": [],
+  "epoch_window": "[-2s, +2s] relative to submit",
+  "sampling_rate": 60,
+  "baseline_comparison": {
+    "t0_initial_fixation": [],
+    "t1_post_stabilization": [],
+    "t2_early_post_stimulus": [],
+    "t3_stable_pre_decision": []
+  },
+  "trial_data": {}
+}

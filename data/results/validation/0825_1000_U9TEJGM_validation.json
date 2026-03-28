@@ -1,0 +1,13 @@
+{
+  "subject_id": "0825_1000_U9TEJGM",
+  "total_trials": 0,
+  "valid_trials": [],
+  "invalid_trials": [],
+  "validation_stats": [],
+  "summary": {
+    "n_valid": 0,
+    "n_invalid": 0,
+    "valid_percentage": 0.0,
+    "failure_reasons": {}
+  }
+}
