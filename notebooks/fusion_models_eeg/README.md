@@ -72,7 +72,7 @@ jupyter notebook notebooks/fusion_models_eeg/late_fusion_eeg_feature_comparison.
 
 ### Files Generated
 
-In `data/results/fusion_models_eeg_PRE/`:
+In `data/results/main/eeg_integration/fusion_models_eeg_PRE/`:
 
 1. **Single-Modality Results**:
    - `eeg_feature_set_comparison_single_modality.csv` - EEG-only performance

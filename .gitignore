@@ -25,3 +25,5 @@ Thumbs.db
 data/eye/
 data/json/
 data/eeg/
+data/results/preprocessing/
+data/results/validation/

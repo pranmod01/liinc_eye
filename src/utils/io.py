@@ -38,7 +38,7 @@ def load_features(filepath, timeframe='PRE'):
     Examples
     --------
     >>> feature_data = load_features(
-    ...     '../../data/results/features_PRE/extracted_features_PRE.pkl',
+    ...     '../../data/features/extracted_features_PRE.pkl',
     ...     timeframe='PRE'
     ... )
     >>> merged_df = feature_data['merged_df']
