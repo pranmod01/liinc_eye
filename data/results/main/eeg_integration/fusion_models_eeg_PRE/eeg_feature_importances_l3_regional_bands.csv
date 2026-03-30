@@ -1,0 +1,17 @@
+Feature,Importance
+eeg_Beta_Central,0.11642081081463365
+eeg_Beta_Parietal,0.08999963632981194
+eeg_Beta_Frontal,0.08557557362969104
+eeg_Beta_Occipital,0.07737290871657657
+eeg_Delta_Parietal,0.07197409602182202
+eeg_Delta_Central,0.06032122086378679
+eeg_Delta_Occipital,0.05897838881094517
+eeg_Alpha_Occipital,0.05843616156407183
+eeg_Alpha_Parietal,0.05602317282774267
+eeg_Theta_Parietal,0.05242682839182704
+eeg_Alpha_Central,0.04954830735028655
+eeg_Alpha_Frontal,0.04900141080972053
+eeg_Theta_Frontal,0.048933495334616696
+eeg_Delta_Frontal,0.04468626222348701
+eeg_Theta_Central,0.04415351738232563
+eeg_Theta_Occipital,0.03614820892865485
