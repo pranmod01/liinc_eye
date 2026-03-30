@@ -2,10 +2,16 @@
 EEG Feature Extraction Module
 
 Unified feature extraction from preprocessed EEG data supporting multiple
-extraction strategies and time windows (PRE/POST decision).
+extraction strategies with a principled granularity hierarchy.
 
-This module follows the same structure as the main preprocessing pipeline
-(01_feature_extraction.ipynb) for consistency.
+GRANULARITY HIERARCHY (from finest to coarsest):
+- Level 0: channels_raw     → 20 features (total power per electrode)
+- Level 1: regional_raw     → 4 features (regional averages of total power)
+- Level 2: channels_bands   → 80 features (20 channels × 4 bands)
+- Level 3: regional_bands   → 16 features (4 regions × 4 bands)
+- Level 4: extended         → 112+ features (channels_bands + lateralization + temporal)
+
+Each level builds on the previous, allowing systematic ablation studies.
 """
 
 import numpy as np
@@ -81,10 +87,36 @@ FREQ_BANDS = {
     'Beta': (13, 30),
 }
 
+# Strategy hierarchy for reference
+STRATEGY_HIERARCHY = {
+    'channels_raw': {'level': 0, 'n_features': 20, 'builds_on': None},
+    'regional_raw': {'level': 1, 'n_features': 4, 'builds_on': 'channels_raw'},
+    'channels_bands': {'level': 2, 'n_features': 80, 'builds_on': 'channels_raw'},
+    'regional_bands': {'level': 3, 'n_features': 16, 'builds_on': 'channels_bands'},
+    'extended': {'level': 4, 'n_features': 112, 'builds_on': 'channels_bands'},
+}
+
 
 # =============================================================================
 # CORE SIGNAL PROCESSING FUNCTIONS
 # =============================================================================
+
+def compute_total_power(eeg_data: np.ndarray) -> np.ndarray:
+    """
+    Compute total (broadband) power for each channel using variance.
+
+    Parameters
+    ----------
+    eeg_data : np.ndarray
+        EEG data with shape (n_channels, n_samples)
+
+    Returns
+    -------
+    np.ndarray
+        Total power for each channel (n_channels,)
+    """
+    return np.var(eeg_data, axis=1)
+
 
 def compute_psd(eeg_data: np.ndarray, fs: int = 256) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -160,12 +192,14 @@ def compute_band_power(
 
 class EEGFeatureExtractor:
     """
-    Unified EEG feature extractor supporting multiple extraction strategies.
+    Unified EEG feature extractor supporting hierarchical extraction strategies.
 
-    Strategies:
-    - 'regional': Regional averages only (16 features)
-    - 'regional_with_channels': Regional + individual channels (96 features)
-    - 'non_temporal': Regional + temporal dynamics + lateralization (96 features)
+    GRANULARITY HIERARCHY:
+    - Level 0: channels_raw     → 20 features (total power per electrode)
+    - Level 1: regional_raw     → 4 features (regional averages of total power)
+    - Level 2: channels_bands   → 80 features (20 channels × 4 bands)
+    - Level 3: regional_bands   → 16 features (4 regions × 4 bands)
+    - Level 4: extended         → 112+ features (channels_bands + lateralization + temporal)
 
     Parameters
     ----------
@@ -181,9 +215,11 @@ class EEGFeatureExtractor:
         Dictionary of frequency bands
     """
 
+    VALID_STRATEGIES = ['channels_raw', 'regional_raw', 'channels_bands', 'regional_bands', 'extended']
+
     def __init__(
         self,
-        strategy: Literal['regional', 'regional_with_channels', 'non_temporal'] = 'regional',
+        strategy: Literal['channels_raw', 'regional_raw', 'channels_bands', 'regional_bands', 'extended'] = 'channels_raw',
         fs: int = 256,
         channel_names: Optional[List[str]] = None,
         channel_regions: Optional[Dict[str, List[str]]] = None,
@@ -196,9 +232,8 @@ class EEGFeatureExtractor:
         self.freq_bands = freq_bands or FREQ_BANDS
 
         # Validate strategy
-        valid_strategies = ['regional', 'regional_with_channels', 'non_temporal']
-        if strategy not in valid_strategies:
-            raise ValueError(f"strategy must be one of {valid_strategies}")
+        if strategy not in self.VALID_STRATEGIES:
+            raise ValueError(f"strategy must be one of {self.VALID_STRATEGIES}")
 
     def extract_trial_features(
         self,
@@ -228,28 +263,84 @@ class EEGFeatureExtractor:
             'trial_id': trial_id
         }
 
-        # Compute band powers
-        band_powers = compute_band_power(eeg_data, self.fs, self.freq_bands)
+        # Level 0: channels_raw (base level)
+        if self.strategy == 'channels_raw':
+            features.update(self._extract_channels_raw(eeg_data))
 
-        if self.strategy == 'regional':
-            features.update(self._extract_regional_features(band_powers))
+        # Level 1: regional_raw (aggregates channels_raw)
+        elif self.strategy == 'regional_raw':
+            channel_powers = compute_total_power(eeg_data)
+            features.update(self._extract_regional_raw(channel_powers))
 
-        elif self.strategy == 'regional_with_channels':
-            features.update(self._extract_regional_features(band_powers))
-            features.update(self._extract_channel_features(band_powers))
+        # Level 2: channels_bands (adds band decomposition to channels)
+        elif self.strategy == 'channels_bands':
+            band_powers = compute_band_power(eeg_data, self.fs, self.freq_bands)
+            features.update(self._extract_channels_bands(band_powers))
 
-        elif self.strategy == 'non_temporal':
-            features.update(self._extract_regional_features(band_powers))
-            features.update(self._extract_temporal_features(eeg_data))
+        # Level 3: regional_bands (aggregates channels_bands by region)
+        elif self.strategy == 'regional_bands':
+            band_powers = compute_band_power(eeg_data, self.fs, self.freq_bands)
+            features.update(self._extract_regional_bands(band_powers))
+
+        # Level 4: extended (channels_bands + lateralization + temporal)
+        elif self.strategy == 'extended':
+            band_powers = compute_band_power(eeg_data, self.fs, self.freq_bands)
+            features.update(self._extract_channels_bands(band_powers))
             features.update(self._extract_lateralization_features(band_powers))
+            features.update(self._extract_temporal_features(eeg_data))
 
         return features
 
-    def _extract_regional_features(
-        self,
-        band_powers: Dict[str, np.ndarray]
-    ) -> Dict[str, float]:
-        """Extract regional average band power features (16 features)."""
+    def _extract_channels_raw(self, eeg_data: np.ndarray) -> Dict[str, float]:
+        """
+        Level 0: Extract total power per channel (20 features).
+
+        This is the base level - raw broadband power at each electrode.
+        """
+        features = {}
+        channel_powers = compute_total_power(eeg_data)
+
+        for ch_idx, ch_name in enumerate(self.channel_names):
+            features[f'eeg_{ch_name}'] = channel_powers[ch_idx]
+
+        return features
+
+    def _extract_regional_raw(self, channel_powers: np.ndarray) -> Dict[str, float]:
+        """
+        Level 1: Extract regional average total power (4 features).
+
+        Aggregates channels_raw by averaging within each region.
+        """
+        features = {}
+
+        for region, channels in self.channel_regions.items():
+            ch_indices = [self.channel_names.index(ch) for ch in channels]
+            avg_power = np.mean(channel_powers[ch_indices])
+            features[f'eeg_{region}'] = avg_power
+
+        return features
+
+    def _extract_channels_bands(self, band_powers: Dict[str, np.ndarray]) -> Dict[str, float]:
+        """
+        Level 2: Extract band power per channel (80 features).
+
+        20 channels × 4 frequency bands.
+        """
+        features = {}
+
+        for band_name in self.freq_bands.keys():
+            for ch_idx, ch_name in enumerate(self.channel_names):
+                features[f'eeg_{band_name}_{ch_name}'] = band_powers[band_name][ch_idx]
+
+        return features
+
+    def _extract_regional_bands(self, band_powers: Dict[str, np.ndarray]) -> Dict[str, float]:
+        """
+        Level 3: Extract regional average band power (16 features).
+
+        Aggregates channels_bands by averaging within each region.
+        4 regions × 4 frequency bands.
+        """
         features = {}
 
         for band_name in self.freq_bands.keys():
@@ -260,27 +351,12 @@ class EEGFeatureExtractor:
 
         return features
 
-    def _extract_channel_features(
-        self,
-        band_powers: Dict[str, np.ndarray]
-    ) -> Dict[str, float]:
-        """Extract individual channel band power features (80 features)."""
-        features = {}
-
-        for band_name in self.freq_bands.keys():
-            for ch_idx, ch_name in enumerate(self.channel_names):
-                features[f'eeg_{band_name}_{ch_name}'] = band_powers[band_name][ch_idx]
-
-        return features
-
-    def _extract_temporal_features(
-        self,
-        eeg_data: np.ndarray
-    ) -> Dict[str, float]:
+    def _extract_temporal_features(self, eeg_data: np.ndarray) -> Dict[str, float]:
         """
         Extract temporal dynamics features using sliding windows (48 features).
 
         Computes mean, std, and slope of band power over time for each region.
+        Part of Level 4 (extended).
         """
         features = {}
 
@@ -328,15 +404,14 @@ class EEGFeatureExtractor:
 
         return features
 
-    def _extract_lateralization_features(
-        self,
-        band_powers: Dict[str, np.ndarray]
-    ) -> Dict[str, float]:
+    def _extract_lateralization_features(self, band_powers: Dict[str, np.ndarray]) -> Dict[str, float]:
         """
         Extract left-right asymmetry indices (32 features).
 
         Lateralization index: (Left - Right) / (Left + Right)
         Positive = left dominance, Negative = right dominance
+
+        Part of Level 4 (extended).
         """
         features = {}
 
@@ -361,7 +436,7 @@ class EEGFeatureExtractor:
 
 def extract_eeg_features(
     eeg_df: pd.DataFrame,
-    strategy: Literal['regional', 'regional_with_channels', 'non_temporal'] = 'regional',
+    strategy: Literal['channels_raw', 'regional_raw', 'channels_bands', 'regional_bands', 'extended'] = 'channels_raw',
     fs: int = 256,
     verbose: bool = True
 ) -> pd.DataFrame:
@@ -376,10 +451,12 @@ def extract_eeg_features(
         - 'trial_id': Trial number
         - 'display_eeg': EEG data array (time x channels)
     strategy : str
-        Feature extraction strategy:
-        - 'regional': Regional averages (16 features)
-        - 'regional_with_channels': Regional + channels (96 features)
-        - 'non_temporal': Regional + temporal + lateralization (96 features)
+        Feature extraction strategy (hierarchical):
+        - 'channels_raw': Total power per channel (20 features) - Level 0
+        - 'regional_raw': Regional average total power (4 features) - Level 1
+        - 'channels_bands': Band power per channel (80 features) - Level 2
+        - 'regional_bands': Regional band power (16 features) - Level 3
+        - 'extended': Channels + lateralization + temporal (112+ features) - Level 4
     fs : int
         Sampling frequency in Hz
     verbose : bool
@@ -393,7 +470,7 @@ def extract_eeg_features(
     extractor = EEGFeatureExtractor(strategy=strategy, fs=fs)
 
     if verbose:
-        print(f"Extracting EEG features using '{strategy}' strategy...")
+        print(f"Extracting EEG features using '{strategy}' strategy (Level {STRATEGY_HIERARCHY[strategy]['level']})...")
         print(f"  Sampling rate: {fs} Hz")
         print(f"  Trials: {len(eeg_df)}")
 
@@ -418,25 +495,35 @@ def extract_eeg_features(
     if verbose:
         eeg_cols = [c for c in features_df.columns if c.startswith('eeg_')]
         print(f"✓ Extracted {len(eeg_cols)} EEG features")
-
-        # Categorize features by type
-        if strategy == 'regional':
-            print(f"  Regional power: {len(eeg_cols)} features")
-        elif strategy == 'regional_with_channels':
-            regional_cols = [c for c in eeg_cols if any(r in c for r in CHANNEL_REGIONS.keys())]
-            channel_cols = [c for c in eeg_cols if c not in regional_cols]
-            print(f"  Regional power: {len(regional_cols)} features")
-            print(f"  Individual channels: {len(channel_cols)} features")
-        elif strategy == 'non_temporal':
-            power_cols = [c for c in eeg_cols if '_power' in c or
-                         (not any(x in c for x in ['_mean', '_std', '_slope', '_lateralization']))]
-            temporal_cols = [c for c in eeg_cols if any(x in c for x in ['_mean', '_std', '_slope'])]
-            lat_cols = [c for c in eeg_cols if '_lateralization' in c]
-            print(f"  Regional power: {len(power_cols)} features")
-            print(f"  Temporal dynamics: {len(temporal_cols)} features")
-            print(f"  Lateralization: {len(lat_cols)} features")
+        _print_feature_summary(strategy, eeg_cols)
 
     return features_df
+
+
+def _print_feature_summary(strategy: str, eeg_cols: List[str]) -> None:
+    """Print a summary of extracted features based on strategy."""
+    if strategy == 'channels_raw':
+        print(f"  Channel power: {len(eeg_cols)} features (20 electrodes)")
+
+    elif strategy == 'regional_raw':
+        print(f"  Regional power: {len(eeg_cols)} features (4 regions)")
+
+    elif strategy == 'channels_bands':
+        print(f"  Channel-band power: {len(eeg_cols)} features (20 channels × 4 bands)")
+
+    elif strategy == 'regional_bands':
+        print(f"  Regional-band power: {len(eeg_cols)} features (4 regions × 4 bands)")
+
+    elif strategy == 'extended':
+        channel_band_cols = [c for c in eeg_cols if not any(x in c for x in
+                            ['_mean', '_std', '_slope', '_lateralization'])]
+        temporal_cols = [c for c in eeg_cols if any(x in c for x in
+                        ['_mean', '_std', '_slope'])]
+        lat_cols = [c for c in eeg_cols if '_lateralization' in c]
+
+        print(f"  Channel-band power: {len(channel_band_cols)} features")
+        print(f"  Temporal dynamics: {len(temporal_cols)} features")
+        print(f"  Lateralization: {len(lat_cols)} features")
 
 
 # =============================================================================
@@ -459,6 +546,8 @@ def get_feature_metadata(strategy: str) -> Dict:
     """
     metadata = {
         'strategy': strategy,
+        'level': STRATEGY_HIERARCHY[strategy]['level'],
+        'builds_on': STRATEGY_HIERARCHY[strategy]['builds_on'],
         'sampling_rate': 256,
         'frequency_bands': FREQ_BANDS,
         'regions': list(CHANNEL_REGIONS.keys()),
@@ -467,18 +556,40 @@ def get_feature_metadata(strategy: str) -> Dict:
         'n_regions': len(CHANNEL_REGIONS),
     }
 
-    if strategy == 'regional':
-        metadata['n_features'] = len(FREQ_BANDS) * len(CHANNEL_REGIONS)
+    if strategy == 'channels_raw':
+        metadata['n_features'] = len(CHANNEL_NAMES)
+        metadata['feature_types'] = ['channel_power']
+
+    elif strategy == 'regional_raw':
+        metadata['n_features'] = len(CHANNEL_REGIONS)
         metadata['feature_types'] = ['regional_power']
-    elif strategy == 'regional_with_channels':
-        metadata['n_features'] = (len(FREQ_BANDS) * len(CHANNEL_REGIONS) +
-                                 len(FREQ_BANDS) * len(CHANNEL_NAMES))
-        metadata['feature_types'] = ['regional_power', 'channel_power']
-    elif strategy == 'non_temporal':
-        metadata['n_features'] = (len(FREQ_BANDS) * len(CHANNEL_REGIONS) +     # Regional power
-                                 len(FREQ_BANDS) * len(CHANNEL_REGIONS) * 3 +  # Temporal (mean, std, slope)
-                                 len(FREQ_BANDS) * len(LATERALIZATION_PAIRS))  # Lateralization
-        metadata['feature_types'] = ['regional_power', 'temporal_dynamics', 'lateralization']
+
+    elif strategy == 'channels_bands':
+        metadata['n_features'] = len(FREQ_BANDS) * len(CHANNEL_NAMES)
+        metadata['feature_types'] = ['channel_band_power']
+
+    elif strategy == 'regional_bands':
+        metadata['n_features'] = len(FREQ_BANDS) * len(CHANNEL_REGIONS)
+        metadata['feature_types'] = ['regional_band_power']
+
+    elif strategy == 'extended':
+        n_channel_band = len(FREQ_BANDS) * len(CHANNEL_NAMES)  # 80
+        n_temporal = len(FREQ_BANDS) * len(CHANNEL_REGIONS) * 3  # 48
+        n_lateralization = len(FREQ_BANDS) * len(LATERALIZATION_PAIRS)  # 32
+        metadata['n_features'] = n_channel_band + n_temporal + n_lateralization
+        metadata['feature_types'] = ['channel_band_power', 'temporal_dynamics', 'lateralization']
         metadata['lateralization_pairs'] = LATERALIZATION_PAIRS
 
     return metadata
+
+
+def get_strategy_hierarchy() -> Dict:
+    """
+    Get the full strategy hierarchy for reference.
+
+    Returns
+    -------
+    dict
+        Strategy hierarchy with level, feature count, and dependencies
+    """
+    return STRATEGY_HIERARCHY.copy()
