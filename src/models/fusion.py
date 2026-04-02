@@ -6,11 +6,73 @@ modalities using different fusion strategies.
 """
 
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import LeaveOneGroupOut, GroupKFold
 from sklearn.metrics import accuracy_score, f1_score
 from scipy import stats
+
+
+def _cohens_d_two_sample(group1, group2):
+    """Cohen's d for two independent samples."""
+    g1 = np.asarray(group1, dtype=float)
+    g2 = np.asarray(group2, dtype=float)
+    g1 = g1[~np.isnan(g1)]
+    g2 = g2[~np.isnan(g2)]
+    n1, n2 = len(g1), len(g2)
+    if n1 < 2 or n2 < 2:
+        return 0.0
+    var1, var2 = np.var(g1, ddof=1), np.var(g2, ddof=1)
+    pooled_std = np.sqrt(((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2))
+    if pooled_std == 0 or not np.isfinite(pooled_std):
+        return 0.0
+    return (np.mean(g1) - np.mean(g2)) / pooled_std
+
+
+def _optimal_bins_from_train(bin_df, y, feature_names, n_bins, train_idx,
+                             min_per_class=10):
+    """
+    For each feature, choose the bin with largest |Cohen's d| using only train_idx rows.
+    Falls back to bin 0 if no bin has enough data in that class.
+    """
+    train_idx = np.asarray(train_idx)
+    y_tr = y[train_idx]
+    invest_idx = train_idx[y_tr == 1]
+    keep_idx = train_idx[y_tr == 0]
+    optimal = {}
+    for feat in feature_names:
+        best_bin = 0
+        best_abs_d = -1.0
+        for b in range(n_bins):
+            col = f'{feat}_bin{b}'
+            if col not in bin_df.columns:
+                continue
+            g1 = bin_df.iloc[invest_idx][col].dropna().to_numpy(dtype=float)
+            g2 = bin_df.iloc[keep_idx][col].dropna().to_numpy(dtype=float)
+            if len(g1) < min_per_class or len(g2) < min_per_class:
+                continue
+            d = _cohens_d_two_sample(g1, g2)
+            if abs(d) > best_abs_d:
+                best_abs_d = abs(d)
+                best_bin = b
+        optimal[feat] = best_bin
+    return optimal
+
+
+def _physio_matrix_from_bins(bin_df, feature_names, optimal_map):
+    """Stack selected-bin columns into (n_samples, n_features)."""
+    n = len(bin_df)
+    X = np.zeros((n, len(feature_names)), dtype=float)
+    for j, feat in enumerate(feature_names):
+        b = optimal_map[feat]
+        col = f'{feat}_bin{b}'
+        if col in bin_df.columns:
+            X[:, j] = pd.to_numeric(bin_df[col], errors='coerce').to_numpy()
+        else:
+            X[:, j] = np.nan
+    return X
 
 
 def weighted_late_fusion(X_modalities, y, subjects, modality_names,
@@ -218,6 +280,189 @@ def weighted_late_fusion(X_modalities, y, subjects, modality_names,
         norm_weights = np.exp(avg_weights) / np.sum(np.exp(avg_weights))
     else:
         # L1 normalization for other methods
+        norm_weights = avg_weights / np.sum(avg_weights)
+
+    return {
+        'accuracy_mean': np.mean(subject_acc_values),
+        'accuracy_sem': stats.sem(subject_acc_values),
+        'accuracy_std': np.std(subject_acc_values),
+        'accuracy_per_subject': subject_acc_values,
+        'f1_mean': np.mean(subject_f1_values),
+        'f1_sem': stats.sem(subject_f1_values),
+        'f1_std': np.std(subject_f1_values),
+        'f1_per_subject': subject_f1_values,
+        'weights': norm_weights,
+        'modality_names': modality_names,
+        'n_trials': len(y),
+        'n_subjects': len(subject_accs),
+        'predictions': preds_all,
+        'y_true': y_true_all,
+        'subject_accs': subject_accs,
+        'subject_f1s': subject_f1s
+    }
+
+
+def weighted_late_fusion_train_optimal_bins(
+        bin_df,
+        physio_feature_names,
+        n_bins,
+        X_behavior,
+        X_gaze,
+        y,
+        subjects,
+        modality_names,
+        n_estimators=100,
+        max_depth=5,
+        min_samples_split=10,
+        min_samples_leaf=5,
+        class_weight='balanced',
+        random_state=42,
+        fusion_method='weighted',
+        min_per_class=10):
+    """
+    Late fusion with the same LOSO + nested GroupKFold stacking as weighted_late_fusion.
+
+    The first modality is built from wide columns ``{feature}_bin{b}`` in ``bin_df``.
+    For each LOSO fold, the bin with largest |Cohen's d| (INVEST vs KEEP) per feature
+    is chosen using **training subjects only**, then applied to all trials in that fold.
+    Missing physiology values are imputed (mean) fit on training rows only.
+
+    Parameters
+    ----------
+    bin_df : pandas.DataFrame
+        One row per trial, same order as ``y`` / ``subjects`` / behavior / gaze arrays.
+    physio_feature_names : sequence of str
+        Base feature names (e.g. pupil_mean); columns ``name_bin0`` ... must exist.
+    n_bins : int
+        Number of time bins (used when scanning ``{name}_bin{b}``).
+    X_behavior, X_gaze : np.ndarray
+        Shape (n_samples, n_features); typically already imputed to match the notebook
+        baseline for behavior and gaze.
+    y, subjects : np.ndarray
+        Labels and group ids per row.
+
+    Returns
+    -------
+    dict
+        Same keys as ``weighted_late_fusion``.
+    """
+    if len(modality_names) != 3:
+        raise ValueError('modality_names must have length 3 '
+                         '(physio from bins, behavior, gaze).')
+
+    bin_df = bin_df.reset_index(drop=True)
+    y = np.asarray(y)
+    subjects = np.asarray(subjects)
+    n_samples = len(y)
+    physio_feature_names = list(physio_feature_names)
+
+    if len(bin_df) != n_samples:
+        raise ValueError(
+            f'bin_df length ({len(bin_df)}) must match y ({n_samples}).')
+    if X_behavior.shape[0] != n_samples or X_gaze.shape[0] != n_samples:
+        raise ValueError('X_behavior and X_gaze must have n_samples rows.')
+
+    logo = LeaveOneGroupOut()
+    base_models = [
+        RandomForestClassifier(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            min_samples_leaf=min_samples_leaf,
+            class_weight=class_weight,
+            random_state=random_state,
+            n_jobs=-1)
+        for _ in range(3)
+    ]
+
+    subject_accs = {}
+    subject_f1s = {}
+    all_weights = []
+    preds_all = []
+    y_true_all = []
+
+    for train_idx, test_idx in logo.split(np.zeros(n_samples), y, subjects):
+        y_train, y_test = y[train_idx], y[test_idx]
+        train_subjects = subjects[train_idx]
+
+        optimal_map = _optimal_bins_from_train(
+            bin_df, y, physio_feature_names, n_bins, train_idx,
+            min_per_class=min_per_class)
+        X_phys_raw = _physio_matrix_from_bins(
+            bin_df, physio_feature_names, optimal_map)
+        imputer = SimpleImputer(strategy='mean')
+        imputer.fit(X_phys_raw[train_idx])
+        X_phys = imputer.transform(X_phys_raw)
+
+        X_modalities = [X_phys, X_behavior, X_gaze]
+
+        if fusion_method in ['weighted', 'stacking']:
+            train_probs = np.zeros((len(train_idx), len(X_modalities)))
+            gkf_inner = GroupKFold(n_splits=5)
+            for inner_train_idx, inner_val_idx in gkf_inner.split(
+                    X_modalities[0][train_idx], y_train, train_subjects):
+                abs_inner_train = train_idx[inner_train_idx]
+                abs_inner_val = train_idx[inner_val_idx]
+                for mod_i, X in enumerate(X_modalities):
+                    model = RandomForestClassifier(
+                        n_estimators=min(50, n_estimators),
+                        max_depth=max_depth,
+                        min_samples_split=min_samples_split,
+                        min_samples_leaf=min_samples_leaf,
+                        class_weight=class_weight,
+                        random_state=random_state,
+                        n_jobs=-1)
+                    model.fit(X[abs_inner_train], y[abs_inner_train])
+                    train_probs[inner_val_idx, mod_i] = model.predict_proba(
+                        X[abs_inner_val])[:, 1]
+        else:
+            train_probs = []
+
+        test_probs = []
+        for X, model in zip(X_modalities, base_models):
+            X_tr, X_te = X[train_idx], X[test_idx]
+            model.fit(X_tr, y_train)
+            test_probs.append(model.predict_proba(X_te)[:, 1])
+
+        test_probs = np.column_stack(test_probs)
+
+        if fusion_method == 'average':
+            y_pred = (np.mean(test_probs, axis=1) > 0.5).astype(int)
+            weights = np.ones(len(X_modalities)) / len(X_modalities)
+        elif fusion_method == 'weighted':
+            meta = LogisticRegression(random_state=random_state, max_iter=1000)
+            meta.fit(train_probs, y_train)
+            weights = meta.coef_[0]
+            y_pred = meta.predict(test_probs)
+        elif fusion_method == 'stacking':
+            meta = RandomForestClassifier(
+                n_estimators=50,
+                max_depth=3,
+                class_weight=class_weight,
+                random_state=random_state)
+            meta.fit(train_probs, y_train)
+            weights = meta.feature_importances_
+            y_pred = meta.predict(test_probs)
+        else:
+            raise ValueError(
+                f"Unknown fusion_method: {fusion_method}. "
+                f"Use 'average', 'weighted', or 'stacking'.")
+
+        test_subject = subjects[test_idx][0]
+        subject_accs[test_subject] = accuracy_score(y_test, y_pred)
+        subject_f1s[test_subject] = f1_score(
+            y_test, y_pred, average='weighted', zero_division=0)
+        all_weights.append(weights)
+        preds_all.extend(y_pred)
+        y_true_all.extend(y_test)
+
+    subject_acc_values = np.array(list(subject_accs.values()))
+    subject_f1_values = np.array(list(subject_f1s.values()))
+    avg_weights = np.mean(all_weights, axis=0)
+
+    if fusion_method == 'weighted':
+        norm_weights = np.exp(avg_weights) / np.sum(np.exp(avg_weights))
+    else:
         norm_weights = avg_weights / np.sum(avg_weights)
 
     return {

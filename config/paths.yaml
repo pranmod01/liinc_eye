@@ -8,7 +8,7 @@ notebooks_dir: "notebooks"
 # Preprocessing outputs
 preprocessing:
   output_dir: "data/results/preprocessing_outputs/preprocessing"
-  eeg_data: "data/results/preprocessing_outputs/preprocessing/preprocessed_eeg_10_subjects.pkl"
+  eeg_data: "data/eeg/preprocessed_eeg_review.pkl"
 
 # Feature paths (PRE-decision)
 pre_paths:
@@ -33,3 +33,5 @@ session_mapping: "data/results/session_mapping.csv"
 raw_data:
   json_dir: "data/raw/json"
   eeg_dir: "data/raw/eeg"
+  # Submit-locked preprocessed EEG (−2 s to +2 s); same epoch as multimodal PRE/POST alignment
+  preprocessed_eeg_pkl: "data/eeg/preprocessed_eeg_review.pkl"

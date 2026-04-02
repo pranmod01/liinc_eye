@@ -24,6 +24,12 @@ import warnings
 # Suppress specific warnings
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
+# Repo root and default preprocessed EEG (decision-locked −2 s to 0 s, 256 Hz; channels × time)
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+PREPROCESSED_EEG_PKL = _REPO_ROOT / "data" / "eeg" / "preprocessed_eeg_review.pkl"
+EEG_EPOCH_T0 = -2.0  # seconds relative to decision (start of epoch)
+EEG_EPOCH_T1 = 0.0   # seconds relative to decision (end of epoch)
+
 
 # =============================================================================
 # CHANNEL CONFIGURATION (from chan_locs.sfp)
@@ -437,6 +443,7 @@ class EEGFeatureExtractor:
 def extract_eeg_features(
     eeg_df: pd.DataFrame,
     strategy: Literal['channels_raw', 'regional_raw', 'channels_bands', 'regional_bands', 'extended'] = 'channels_raw',
+    eeg_column: str = 'review_eeg',
     fs: int = 256,
     verbose: bool = True
 ) -> pd.DataFrame:
@@ -449,7 +456,7 @@ def extract_eeg_features(
         DataFrame with columns:
         - 'subject_date_id': Subject identifier
         - 'trial_id': Trial number
-        - 'display_eeg': EEG data array (time x channels)
+        - eeg_column: EEG data array (channels × time), decision-locked −2 s to 0 s at `fs` Hz
     strategy : str
         Feature extraction strategy (hierarchical):
         - 'channels_raw': Total power per channel (20 features) - Level 0
@@ -457,6 +464,8 @@ def extract_eeg_features(
         - 'channels_bands': Band power per channel (80 features) - Level 2
         - 'regional_bands': Regional band power (16 features) - Level 3
         - 'extended': Channels + lateralization + temporal (112+ features) - Level 4
+    eeg_column : str
+        Name of the column containing EEG data arrays (default: 'review_eeg')
     fs : int
         Sampling frequency in Hz
     verbose : bool
@@ -471,19 +480,19 @@ def extract_eeg_features(
 
     if verbose:
         print(f"Extracting EEG features using '{strategy}' strategy (Level {STRATEGY_HIERARCHY[strategy]['level']})...")
+        print(f"  EEG column: {eeg_column}")
         print(f"  Sampling rate: {fs} Hz")
         print(f"  Trials: {len(eeg_df)}")
 
     features_list = []
 
     for idx, row in eeg_df.iterrows():
-        # display_eeg has shape (time, channels)
-        # Transpose to (channels, time) for processing
-        display_eeg = np.array(row['display_eeg']).T
+        # review_eeg has shape (channels, time) - no transpose needed
+        eeg_data = np.array(row[eeg_column])
 
         # Extract features
         trial_features = extractor.extract_trial_features(
-            eeg_data=display_eeg,
+            eeg_data=eeg_data,
             subject_id=row['subject_date_id'],
             trial_id=f"{row['trial_id']}_{row['subject_date_id']}"
         )
