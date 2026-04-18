@@ -24,11 +24,20 @@ import warnings
 # Suppress specific warnings
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
-# Repo root and default preprocessed EEG (decision-locked −2 s to 0 s, 256 Hz; channels × time)
+# Repo root and preprocessed EEG paths (2s epochs at 256 Hz; channels × time)
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-PREPROCESSED_EEG_PKL = _REPO_ROOT / "data" / "eeg" / "preprocessed_eeg_review.pkl"
-EEG_EPOCH_T0 = -2.0  # seconds relative to decision (start of epoch)
-EEG_EPOCH_T1 = 0.0   # seconds relative to decision (end of epoch)
+
+# Pre-decision (display window): stimulus onset to decision (-2s to 0s relative to decision)
+PREPROCESSED_EEG_PRE = _REPO_ROOT / "data" / "eeg" / "display_window_2s.pkl"
+
+# Post-decision (review window): decision to feedback (0s to +2s relative to decision)
+PREPROCESSED_EEG_POST = _REPO_ROOT / "data" / "eeg" / "review_window_2s.pkl"
+
+# Default to pre-decision for backwards compatibility
+PREPROCESSED_EEG_PKL = PREPROCESSED_EEG_PRE
+
+EEG_EPOCH_T0 = -2.0  # seconds relative to decision (start of pre-decision epoch)
+EEG_EPOCH_T1 = 0.0   # seconds relative to decision (end of pre-decision epoch)
 
 
 # =============================================================================
@@ -443,7 +452,7 @@ class EEGFeatureExtractor:
 def extract_eeg_features(
     eeg_df: pd.DataFrame,
     strategy: Literal['channels_raw', 'regional_raw', 'channels_bands', 'regional_bands', 'extended'] = 'channels_raw',
-    eeg_column: str = 'review_eeg',
+    eeg_column: str = 'eeg',
     fs: int = 256,
     verbose: bool = True
 ) -> pd.DataFrame:
@@ -456,7 +465,7 @@ def extract_eeg_features(
         DataFrame with columns:
         - 'subject_date_id': Subject identifier
         - 'trial_id': Trial number
-        - eeg_column: EEG data array (channels × time), decision-locked −2 s to 0 s at `fs` Hz
+        - eeg_column: EEG data array (channels × time), 2s epochs at `fs` Hz
     strategy : str
         Feature extraction strategy (hierarchical):
         - 'channels_raw': Total power per channel (20 features) - Level 0
@@ -465,7 +474,7 @@ def extract_eeg_features(
         - 'regional_bands': Regional band power (16 features) - Level 3
         - 'extended': Channels + lateralization + temporal (112+ features) - Level 4
     eeg_column : str
-        Name of the column containing EEG data arrays (default: 'review_eeg')
+        Name of the column containing EEG data arrays (default: 'eeg')
     fs : int
         Sampling frequency in Hz
     verbose : bool
