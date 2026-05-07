@@ -1,0 +1,11 @@
+feature,mean_abs_shap,rt_group
+ambiguity,0.1383709865321104,Fast
+invest_variance,0.023460390893677817,Fast
+risk_premium,0.02244024121138945,Fast
+ev_difference,0.019889227437322687,Fast
+condition_social,0.004071454496032844,Fast
+ambiguity,0.11640025476431766,Slow
+risk_premium,0.020593415947114675,Slow
+invest_variance,0.018717459404059493,Slow
+ev_difference,0.015651381296353736,Slow
+condition_social,0.005241159037299858,Slow

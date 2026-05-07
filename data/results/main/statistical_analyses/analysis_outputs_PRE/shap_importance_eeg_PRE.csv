@@ -1,0 +1,17 @@
+feature,mean_abs_shap
+eeg_Beta_Frontal,0.01737288291771603
+eeg_Beta_Parietal,0.00974599750703489
+eeg_Theta_Frontal,0.00969165246493786
+eeg_Beta_Central,0.00910392018180613
+eeg_Beta_Occipital,0.007805198366645421
+eeg_Alpha_Frontal,0.007168731943924802
+eeg_Delta_Frontal,0.0067251284765457876
+eeg_Theta_Parietal,0.004893347587300631
+eeg_Delta_Central,0.00449164405235797
+eeg_Theta_Central,0.004113829162729946
+eeg_Alpha_Central,0.003899376850386735
+eeg_Alpha_Parietal,0.00349010914034601
+eeg_Delta_Parietal,0.0029433729208941193
+eeg_Alpha_Occipital,0.0025841548877856436
+eeg_Delta_Occipital,0.0025234536440067374
+eeg_Theta_Occipital,0.002505527937182755

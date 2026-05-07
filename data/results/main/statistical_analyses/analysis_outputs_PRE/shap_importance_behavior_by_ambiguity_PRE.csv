@@ -1,0 +1,16 @@
+feature,mean_abs_shap,ambiguity
+risk_premium,0.028743297719804082,Low
+invest_variance,0.027521843885987288,Low
+ev_difference,0.025608291149196417,Low
+condition_social,0.017507786816766503,Low
+ambiguity,0.0,Low
+invest_variance,0.020676759878258125,Medium
+risk_premium,0.019757590085053792,Medium
+ev_difference,0.0162119915568615,Medium
+condition_social,0.010112087895511379,Medium
+ambiguity,0.0,Medium
+risk_premium,0.020319363294156383,High
+invest_variance,0.01917963239805313,High
+ev_difference,0.01845434345256892,High
+condition_social,0.009661999856891413,High
+ambiguity,0.0,High
