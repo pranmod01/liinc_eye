@@ -1,0 +1,23 @@
+Section,Test,Statistic,N,Significant
+1 – Model Validation,Permutation test (all features),p = 0.0000,102,Yes
+2 – Bootstrap CI,Accuracy 95% CI (all features),0.6591 [0.6092–0.7033],102,—
+3 – McNemar,All vs Behavior,p = 0.0000,12107,Yes
+3 – McNemar,All vs Physio+Gaze,p = 0.0000,12107,Yes
+3 – McNemar,Behavior vs Physio,p = 0.0000,12107,Yes
+4 – Ambiguity ANOVA,One-way ANOVA (Low / Med / High accuracy),"F(2,288) = 23.338, p = 0.0000",291,Yes
+5 – Cross-Visit,Paired t-test: V1→V2 cross vs within accuracy,"t = 2.850, p = 0.0078",31,Yes
+5 – Cross-Visit (ablation),Paired t: behavior_only (Δ cross–within),"t = 1.073, p = 0.2918",31,No
+5 – Cross-Visit (ablation),Paired t: gaze+behavior (Δ cross–within),"t = 1.787, p = 0.0840",31,No
+5 – Cross-Visit (ablation),Paired t: all_features (Δ cross–within),"t = 2.850, p = 0.0078",31,Yes
+6 – Aversion–Gaze,Spearman: aversion ↔ gaze coupling (cross-sectional),"r = 0.356, p = 0.0012",80,Yes
+6 – Aversion–Gaze,Paired t-test: Δaversion V1→V2,"t = -3.881, p = 0.0011",19,Yes
+6 – Aversion–Gaze,Paired t-test: Δcoupling V1→V2,"t = -1.184, p = 0.2520",19,No
+6 – Aversion–Gaze,Spearman: Δaversion ↔ Δcoupling (longitudinal),"r = 0.444, p = 0.0570",19,No
+7 – Shapley by Condition,Behavior: High–Low ambiguity Δ,"Δ = +18.6% (Low=28.8%, High=47.4%)",3,—
+7 – Shapley by Condition,Behavior: Slow–Fast RT Δ,"Δ = -19.9% (Fast=71.3%, Slow=51.4%)",2,—
+7 – Shapley by Condition,Gaze: High–Low ambiguity Δ,"Δ = -7.1% (Low=41.8%, High=34.7%)",3,—
+7 – Shapley by Condition,Gaze: Slow–Fast RT Δ,"Δ = +11.8% (Fast=25.4%, Slow=37.1%)",2,—
+7 – Shapley by Condition,Physio: High–Low ambiguity Δ,"Δ = +3.8% (Low=6.5%, High=10.3%)",3,—
+7 – Shapley by Condition,Physio: Slow–Fast RT Δ,"Δ = +7.3% (Fast=-3.1%, Slow=4.2%)",2,—
+7 – Shapley by Condition,EEG: High–Low ambiguity Δ,"Δ = -15.2% (Low=22.9%, High=7.6%)",3,—
+7 – Shapley by Condition,EEG: Slow–Fast RT Δ,"Δ = +0.8% (Fast=6.4%, Slow=7.3%)",2,—
